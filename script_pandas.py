@@ -3,7 +3,6 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 
-
 # Calculates the 2015/2016 season fantasy points for each player, according to the following formula:
 # Fantasy Points = Goals * 4 + Assists * 2.5 - Powerplay Goals - Powerplay Assists * 0.5 + Plus/Minus * 0.6 +
 # Shots * 0.1 + Hits * 0.06 + Blocked Shots * 0.03
@@ -88,10 +87,10 @@ def pre_process():
     return X, Y, test_data
 
 
-# Exports to two CSV files.
+# Fits the model to the test data and exports to two CSV files.
 # 1. Exports a list of the features and their weights to feature_weights.csv.
 # 2. Exports a list of player predictions for the 2015/2016 data based on the fitted model to predictions.csv.
-def export_data(rf, X, Y, test_data):
+def fit_and_export_data(rf, X, Y, test_data):
     rf.fit(X, Y)
     importances = pd.DataFrame(rf.feature_importances_)
     importances.index = X.columns
@@ -104,35 +103,34 @@ def export_data(rf, X, Y, test_data):
     result.to_csv("predictions.csv")
 
 
-# Graphs the OOB_Error for estimators ranging from min_estimators to max_estimators.
-def print_oob_vs_estimators(min_estimators, max_estimators, step, rf, X, Y):
-    error_rate = []
-    step = step
-    for i in range(min_estimators, max_estimators, step):
-        rf.set_params(n_estimators=i, oob_error=True)
-        rf.fit(X, Y)
-        oob_error = 1 - rf.oob_score_
-        error_rate.append(oob_error)
-
-    # Generate the "OOB error rate" vs. "n_estimators" plot.
-    xs = range(min_estimators, max_estimators, step)
-    ys = error_rate
-    plt.plot(xs, ys)
-
-    plt.xlim(min_estimators, max_estimators)
-    plt.xlabel("n_estimators")
-    plt.ylabel("OOB error rate")
-    plt.show()
+# Brute forces to try to find some good parameter choices for the model. Note: takes a long time to run.
+def try_parameters(rf, X, Y):
+    min_error_rate = 1
+    best_features = []
+    criterion = ["mse", "mae"]
+    max_features = ["auto", "sqrt", "log2"]
+    n_estimators = [100, 300, 500]
+    for crit in criterion:
+        for maxft in max_features:
+                for n in n_estimators:
+                    rf.set_params(oob_score=True, n_jobs=-1, criterion=crit, max_features=maxft, n_estimators=n)
+                    rf.fit(X, Y)
+                    error = 1 - rf.oob_score_
+                    if error < min_error_rate:
+                        min_error_rate = error
+                        best_features = [crit, maxft, n]
+                    print("ERROR: {}, FEATURES: {}".format(error, [crit, maxft, n]));
+    print("MIN ERROR: {}, BEST_FEATURES: {}".format(min_error_rate, best_features))
 
 
 # Processes the data and creates the model object and then either makes a prediction and exports the data or tests a
-# variety of potential tree values. Always comment all but one of the lines marked with an asterisk. Fitting is done in
-# an asterisked method.
+# variety of potential parameter selections. Always comment all but one of the lines marked with an asterisk.
+# Fitting is done in an asterisked method.
 def main():
     X, Y, test_data = pre_process()
-    rf = RandomForestRegressor(n_estimators=10, n_jobs=-1)     # *
-    #print_oob_vs_estimators(100, 550, 50, rf, X, Y)            # *
-    export_data(rf, X, Y, test_data)
+    rf = RandomForestRegressor(n_estimators=10, n_jobs=-1)
+    #try_parameters(rf, X, Y)                                           # *
+    fit_and_export_data(rf, X, Y, test_data)                            # *
 
 
 if __name__ == "__main__":
