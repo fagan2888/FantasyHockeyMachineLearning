@@ -15,7 +15,6 @@ The data in es5 was downloaded from [Hockey Reference](Hockey-Reference.com).
 * sklearn 0.18
 * scipy 0.18.1
 * numpy 1.11.1
-* matplotlib 1.5.1
 
 ## Running the Script
 
